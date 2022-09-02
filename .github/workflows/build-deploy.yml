@@ -4,6 +4,8 @@ on:
   workflow_dispatch:
 env:
   CONTAINER_REGISTRY: handsonacrlboul57gqtc2m.azurecr.io
+  RESOURCE_GROUP_NAME: Handson01CICD
+  CONTAINERAPP_NAME: ctapp-demo-api
 jobs:
   build:
     runs-on: ubuntu-18.04
@@ -60,3 +62,28 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      # Add a step
+      - name: Deploy to containerapp
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az extension add --upgrade --name containerapp
+
+            az containerapp registry set \
+              --name ${{ env.CONTAINERAPP_NAME }} \
+              --resource-group ${{ env.RESOURCE_GROUP_NAME }} \
+              --server ${{ env.CONTAINER_REGISTRY }} \
+              --username  ${{ secrets.CONTAINER_REGISTRY_USERNAME }} \
+              --password ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
+
+            az containerapp ingress enable \
+              --name ${{ env.CONTAINERAPP_NAME }} \
+              --resource-group ${{ env.RESOURCE_GROUP_NAME }} \
+              --target-port 3500 \
+              --type external
+
+            az containerapp update \
+              --name ${{ env.CONTAINERAPP_NAME }} \
+              --resource-group ${{ env.RESOURCE_GROUP_NAME }} \
+              --container-name ${{ env.REPOSITORY_NAME }} \
+              --image ${{ env.CONTAINER_REGISTRY }}/${{ env.REPOSITORY_NAME }}:${{ github.sha }}
